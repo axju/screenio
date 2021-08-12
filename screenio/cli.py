@@ -2,11 +2,6 @@ import sys
 from argparse import ArgumentParser, SUPPRESS, REMAINDER
 from . import __version__
 from .utils import load_settings, setup_logger, load_entry_points
-from .funcs import record
-
-
-def record_cli(settings, args):
-    record()
 
 
 def create_parse(commands):

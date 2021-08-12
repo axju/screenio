@@ -14,13 +14,17 @@ setup(
         'importlib-metadata; python_version < "3.8.0"',
         'dynaconf',
         'pillow',
+        'moviepy',
+        'ffmpeg-python',
+        'opencv-python',
     ],
     entry_points={
         'console_scripts': [
             'screenio=screenio.cli:main',
         ],
         'screenio.register_cmd': [
-            'record=screenio.cli:record_cli',
+            'record=screenio.funcs:record_cli',
+            'convert=screenio.funcs:convert_cli',
         ],
     }
 )
