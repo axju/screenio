@@ -9,6 +9,11 @@ Install
 
   pip install screenio
 
+Commands
+--------
+::
+
+  screenio record -o out.mp4
 
 Development
 -----------

@@ -35,28 +35,6 @@ def record_frames_pil(output='frames', size=(0, 0, 1920, 1080), dt=1, difference
     logger.info('end pillow recording with counter=%i', counter)
 
 
-def record_video_pil(output='out.mp4', size=(0, 0, 1920, 1080), dt=5, framerate=30, difference=True):
-    output = Path(output).resolve()
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(str(output), fourcc, 20.0, (size[2:]))
-    current_img = last_img = grab(size)
-    while True:
-        try:
-            current_img = grab(size)
-            if not difference or current_img != last_img:
-                logger.debug('add frame')
-                frame = np.array(current_img)
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                out.write(frame)
-            else:
-                logger.debug('skip frame')
-            last_img = current_img
-            sleep(dt)
-        except KeyboardInterrupt:
-            break
-    out.release()
-
-
 def record_frames_ffmpeg(output='frames', size=(1920, 1080), framerate=1):
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -77,6 +55,29 @@ def record_frames_ffmpeg(output='frames', size=(1920, 1080), framerate=1):
         logger.info('end ffmpeg recording with counter=%i', counter)
 
 
+def record_video_pil(output='out.mkv', size=None, dt=5, framerate=30, difference=True):
+    current_img = last_img = grab(size)
+    print(current_img.size)
+    output = Path(output).resolve()
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(str(output), fourcc, 20.0, current_img.size)
+    while True:
+        try:
+            current_img = grab(size)
+            if not difference or current_img != last_img:
+                logger.debug('add frame')
+                frame = np.array(current_img)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                out.write(frame)
+            else:
+                logger.debug('skip frame')
+            last_img = current_img
+            sleep(dt)
+        except KeyboardInterrupt:
+            break
+    out.release()
+
+
 def frames_to_video_moviepy(directory='frames', output='out.mp4', fps=30):
     directory = Path(directory).resolve()
     logger.debug('directory=%s', directory)
@@ -92,11 +93,3 @@ def frames_to_video_ffmpeg(directory='frames', output='out.mp4', fps=30, vcodec=
     stream = ffmpeg.input(filename=filename, f='image2').setpts('N/TB/{}'.format(fps))
     stream = ffmpeg.output(stream, output, vcodec=vcodec, pix_fmt=pix_fmt, r=fps)
     ffmpeg.run(stream, overwrite_output=True)
-
-
-def record_cli(settings, args):
-    record_video_pil()
-
-
-def convert_cli(settings, args):
-    frames_to_video_ffmpeg()

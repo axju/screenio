@@ -23,8 +23,8 @@ setup(
             'screenio=screenio.cli:main',
         ],
         'screenio.register_cmd': [
-            'record=screenio.funcs:record_cli',
-            'convert=screenio.funcs:convert_cli',
+            'record=screenio.cli:record_cli',
+            'convert=screenio.cli:convert_cli',
         ],
     }
 )
