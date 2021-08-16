@@ -23,8 +23,9 @@ setup(
             'screenio=screenio.cli:main',
         ],
         'screenio.register_cmd': [
-            'record=screenio.cli:record_cli',
-            'convert=screenio.cli:convert_cli',
+            'video=screenio.cli:video',
+            'frames=screenio.cli:frames',
+            'convert=screenio.cli:convert',
         ],
     }
 )

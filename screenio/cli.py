@@ -5,25 +5,61 @@ from . import funcs
 from .utils import setup_logger, load_entry_points
 
 
-def record_cli(argv=None):
-    parser = ArgumentParser()
+def video(argv=None):
+    parser = ArgumentParser(prog='screenio video')
     subparsers = parser.add_subparsers(dest='kind')
-    parser_video_pil = subparsers.add_parser('video-pil')
-    parser_video_pil.add_argument('-o', '--output', default='out.mp4', help='output file')
-    parser_video_pil.add_argument('-s', '--size', type=int, nargs=4, help='delta time')
-    parser_video_pil.add_argument('-t', '--dt', type=int, default=1, help='delta time')
-    parser_video_pil.add_argument('-f', '--framerate', type=int, default=30, help='framerate')
-    parser_video_pil.add_argument('-d', '--difference', action='store_false', help='disabel difference check')
+    subparsers_pil = subparsers.add_parser('pil')
+    subparsers_pil.add_argument('-o', '--output', default='out.mp4', help='output file')
+    subparsers_pil.add_argument('-s', '--size', type=int, nargs=4, help='size 0 0 1920 1080)')
+    subparsers_pil.add_argument('-t', '--dt', type=float, default=1, help='delta time default=1')
+    subparsers_pil.add_argument('-f', '--framerate', type=int, default=30, help='framerate default=30')
+    subparsers_pil.add_argument('-d', '--difference', action='store_false', help='disabel difference check')
+
+    subparsers_ffmpeg = subparsers.add_parser('ffmpeg')
+    subparsers_ffmpeg.add_argument('-o', '--output', default='out.mp4', help='output file')
+    subparsers_ffmpeg.add_argument('-s', '--size', type=int, nargs=2, default=[1920, 1080], help='delta time')
+    subparsers_ffmpeg.add_argument('-t', '--dt', type=float, default=1, help='delta time default=1')
+    subparsers_ffmpeg.add_argument('-f', '--framerate', type=int, default=30, help='framerate default=30')
+    subparsers_ffmpeg.add_argument('--filename', default=':1', help='ffmpeg input filename for source')
+    subparsers_ffmpeg.add_argument('--f', default='x11grab', help='vcodec')
+    subparsers_ffmpeg.add_argument('--vcodec', default='libx264', help='vcodec')
+    subparsers_ffmpeg.add_argument('--pix_fmt', default='yuv420p', help='pix_fmt')
+
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    if args.kind == 'pil':
+        funcs.record_video_pil(args.output, args.size, args.dt, args.framerate, args.difference)
+    elif args.kind == 'ffmpeg':
+        funcs.record_video_ffmpeg(args.output, args.filename, args.f, args.size, 1 / args.dt, args.framerate, args.vcodec, args.pix_fmt)
+    else:
+        parser.print_help()
+
+
+def frames(argv):
+    parser = ArgumentParser(prog='screenio frames')
+    subparsers = parser.add_subparsers(dest='kind')
+    subparsers_pil = subparsers.add_parser('pil')
+    subparsers_pil.add_argument('-o', '--output', default='frames', help='output dir')
+    subparsers_pil.add_argument('-s', '--size', type=int, nargs=4, help='size (0, 0, 1920, 1080)')
+    subparsers_pil.add_argument('-t', '--dt', type=int, default=1, help='delta time default=1')
+    subparsers_pil.add_argument('-d', '--difference', action='store_false', help='disabel difference check')
+
+    subparsers_ffmpeg = subparsers.add_parser('ffmpeg')
+    subparsers_ffmpeg.add_argument('-o', '--output', default='frames', help='output dir')
+    subparsers_ffmpeg.add_argument('-s', '--size', type=int, nargs=2, default=[1920, 1080], help='size default=(1920, 1080)')
+    subparsers_ffmpeg.add_argument('-f', '--framerate', type=int, default=1, help='framerate default=1')
+
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    if args.kind == 'pil':
+        funcs.record_frames_pil(args.output, args.size, args.dt, args.difference)
+    elif args.kind == 'ffmpeg':
+        funcs.record_frames_ffmpeg(args.output, args.size, args.framerate)
+    else:
+        parser.print_help()
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    if args.kind == 'video-pil':
-        funcs.record_video_pil(args.output, args.size, args.dt, args.framerate, args.difference)
-    elif args.kind == 'frames':
-        funcs.record_frames_pil()
 
-
-def convert_cli(argv):
+def convert(argv):
     funcs.frames_to_video_ffmpeg()
 
 

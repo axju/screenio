@@ -1,5 +1,5 @@
 import logging
-from pkg_resources import iter_entry_points
+from importlib.metadata import entry_points
 from dynaconf import Dynaconf
 
 
@@ -23,4 +23,4 @@ def setup_logger(level=0, logger=''):
 
 def load_entry_points():
     """get all entry points"""
-    return {enp.name: enp.load() for enp in iter_entry_points(group='screenio.register_cmd')}
+    return {enp.name: enp.load() for enp in entry_points()['screenio.register_cmd']}

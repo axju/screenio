@@ -2,14 +2,25 @@ from time import sleep
 from pathlib import Path
 from logging import getLogger
 
-import cv2
-import ffmpeg
-import numpy as np
-from PIL.ImageGrab import grab
-from moviepy.editor import ImageSequenceClip
-
 
 logger = getLogger(__name__)
+try:
+    import cv2
+    import numpy as np
+except ImportError:
+    logger.info('missing module cv2')
+try:
+    import ffmpeg
+except ImportError:
+    logger.info('missing module ffmpeg')
+try:
+    from PIL.ImageGrab import grab
+except ImportError:
+    logger.info('missing module pillow')
+try:
+    from moviepy.editor import ImageSequenceClip
+except ImportError:
+    logger.info('missing module moviepy')
 
 
 def record_frames_pil(output='frames', size=(0, 0, 1920, 1080), dt=1, difference=True):
@@ -55,9 +66,8 @@ def record_frames_ffmpeg(output='frames', size=(1920, 1080), framerate=1):
         logger.info('end ffmpeg recording with counter=%i', counter)
 
 
-def record_video_pil(output='out.mkv', size=None, dt=5, framerate=30, difference=True):
+def record_video_pil(output='out.mp4', size=None, dt=5, framerate=30, difference=True):
     current_img = last_img = grab(size)
-    print(current_img.size)
     output = Path(output).resolve()
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(output), fourcc, 20.0, current_img.size)
@@ -76,6 +86,28 @@ def record_video_pil(output='out.mkv', size=None, dt=5, framerate=30, difference
         except KeyboardInterrupt:
             break
     out.release()
+
+
+def record_video_ffmpeg(output='frames', filename=':1', f='x11grab', size=(1920, 1080), framerate=1, fps=30, vcodec='libx264', pix_fmt='yuv420p'):
+    """
+    framerate -> input framrate for recording the screen
+    fps -> output framrate for writing the video file
+    """
+    output = Path(output).resolve()
+    logger.info('start ffmpeg recording with:')
+    logger.info('size=%s, framerate=%f, output=%s', size, framerate, output)
+    logger.info('fps=%s, vcodec=%f, pix_fmt=%s', fps, vcodec, pix_fmt)
+
+    stream = ffmpeg.input(filename=filename, f=f, video_size=size, framerate=framerate).setpts('N/TB/{}'.format(fps))
+    stream = ffmpeg.output(stream, output, vcodec=vcodec, pix_fmt=pix_fmt, r=fps)
+    process = ffmpeg.run_async(stream, pipe_stdin=True, pipe_stdout=True, pipe_stderr=True, overwrite_output=True)
+    try:
+        input('')
+    except KeyboardInterrupt:
+        logger.info('breack with KeyboardInterrupt')
+    finally:
+        process.communicate(input=b"q")
+        logger.info('end ffmpeg recording')
 
 
 def frames_to_video_moviepy(directory='frames', output='out.mp4', fps=30):

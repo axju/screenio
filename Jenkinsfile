@@ -38,33 +38,7 @@ pipeline {
                 """
             }
         }
-        stage('publish') {
-            when {
-                branch 'master'
-            }
-            steps {
-                script {
-                    PYPI_VERSION = sh (
-                        script: """#!/bin/bash
-                            source venv/bin/activate
-                            python setup.py --version
-                        """,
-                        returnStdout: true
-                    ).trim()
-                    echo "PyPi version: ${PYPI_VERSION}"
-                    if (PYPI_VERSION.length() < 8){
-                        echo "Publish on PyPi"
-                        sh """#!/bin/bash
-                            source venv/bin/activate
-                            python -m twine upload dist/*
-                        """
-                    }
-                    else{
-                        echo "Skip upload to PyPi"
-                    }
-                }
-            }
-        }
+        
     }
     post {
         always {
