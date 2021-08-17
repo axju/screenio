@@ -7,13 +7,17 @@ Install
 -------
 ::
 
-  pip install screenio
+  pip install git+https://github.com/axju/screenio.git
 
 Commands
 --------
 ::
 
-  screenio record -o out.mp4
+  screenio video pil
+  screenio video ffmpeg
+  screenio frames pil
+  screenio frames ffmpeg
+
 
 Development
 -----------
