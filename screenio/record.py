@@ -23,16 +23,18 @@ except ImportError:
     logger.info('missing module moviepy')
 
 
-def record_video_pil(output='out.mp4', size=None, dt=1, framerate=30, difference=True):
-    current_img = last_img = grab(size)
+def record_video_pil(output='out.mp4', size=None, dt=1, framerate=30, difference=True, xdisplay=':1', running=None):
+    current_img = last_img = grab(size, xdisplay=xdisplay)
     output = Path(output).resolve()
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(output), fourcc, framerate, current_img.size)
-    while True:
+    logger.info('start pillow recording with:')
+    logger.info('size=%s, framerate=%f, output=%s', size, framerate, output)
+    while running is None or not running.is_set():
         try:
-            current_img = grab(size)
+            current_img = grab(size, xdisplay=xdisplay)
             if not difference or current_img != last_img:
-                logger.debug('add frame')
+                logger.debug('add frame running=%s', running)
                 frame = np.array(current_img)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 out.write(frame)
@@ -42,10 +44,11 @@ def record_video_pil(output='out.mp4', size=None, dt=1, framerate=30, difference
             sleep(dt)
         except KeyboardInterrupt:
             break
+    logger.info('end pillow recording')
     out.release()
 
 
-def record_video_ffmpeg(output='out.mp4', filename=':1', f='x11grab', size=(1920, 1080), framerate=1, fps=30, vcodec='libx264', pix_fmt='yuv420p'):
+def record_video_ffmpeg(output='out.mp4', filename=':1', f='x11grab', size=(1920, 1080), framerate=1, fps=30, vcodec='libx264', pix_fmt='yuv420p', running=None):
     """
     framerate -> input framrate for recording the screen
     fps -> output framrate for writing the video file
@@ -59,7 +62,11 @@ def record_video_ffmpeg(output='out.mp4', filename=':1', f='x11grab', size=(1920
     stream = ffmpeg.output(stream, str(output), vcodec=vcodec, preset='ultrafast', r=fps, pix_fmt=pix_fmt)
     process = ffmpeg.run_async(stream, pipe_stdin=True, pipe_stdout=True, pipe_stderr=True, overwrite_output=True)
     try:
-        input('')
+        if running is None:
+            input('')
+        else:
+            while not running.is_set():
+                sleep(1)
     except KeyboardInterrupt:
         logger.info('breack with KeyboardInterrupt')
     finally:

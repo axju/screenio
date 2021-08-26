@@ -12,7 +12,7 @@ setup(
     setup_requires=['setuptools_scm'],
     install_requires=[
         'importlib-metadata; python_version < "3.8.0"',
-        'dynaconf',
+        'toml',
         'pillow',
         'moviepy',
         'ffmpeg-python',
@@ -26,6 +26,7 @@ setup(
             'video=screenio.cli:video',
             'frames=screenio.cli:frames',
             'convert=screenio.cli:convert',
+            'octopus=screenio.cli:octopus',
         ],
     }
 )

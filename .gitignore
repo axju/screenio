@@ -103,6 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-settings.toml
+screenio.toml
 frames
 data

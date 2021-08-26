@@ -1,7 +1,8 @@
 import sys
 from argparse import ArgumentParser, SUPPRESS, REMAINDER
 from . import __version__
-from . import funcs
+from . import record
+from .octopus import main as octopus_main
 from .utils import setup_logger, load_entry_points, format_now
 
 
@@ -19,6 +20,7 @@ def create_parsers_pil(parser):
     subparsers = parser.add_parser('pil')
     subparsers.add_argument('-s', '--size', type=int, nargs=4, help='size (0, 0, 1920, 1080)')
     subparsers.add_argument('-t', '--dt', type=float, default=1, help='delta time default=1')
+    subparsers.add_argument('-f', '--framerate', type=int, default=30, help='framerate default=30')
     subparsers.add_argument('-d', '--difference', action='store_false', help='disabel difference check')
     return subparsers
 
@@ -47,9 +49,9 @@ def video(argv=None):
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     if args.kind == 'pil':
-        funcs.record_video_pil(args.output, args.size, args.dt, args.framerate, args.difference)
+        record.record_video_pil(args.output, args.size, args.dt, args.framerate, args.difference)
     elif args.kind == 'ffmpeg':
-        funcs.record_video_ffmpeg(args.output, args.filename, args.f, args.size, 1 / args.dt, args.framerate, args.vcodec, args.pix_fmt)
+        record.record_video_ffmpeg(args.output, args.filename, args.f, args.size, 1 / args.dt, args.framerate, args.vcodec, args.pix_fmt)
     else:
         parser.print_help()
 
@@ -64,9 +66,9 @@ def frames(argv):
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     if args.kind == 'pil':
-        funcs.record_frames_pil(args.output, args.size, args.dt, args.difference)
+        record.record_frames_pil(args.output, args.size, args.dt, args.difference)
     elif args.kind == 'ffmpeg':
-        funcs.record_frames_ffmpeg(args.output, args.size, 1 / args.dt, args.filename, args.f)
+        record.record_frames_ffmpeg(args.output, args.size, 1 / args.dt, args.filename, args.f)
     else:
         parser.print_help()
 
@@ -85,11 +87,19 @@ def convert(argv):
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     if args.kind == 'moviepy':
-        funcs.frames_to_video_moviepy(args.input, args.output, args.framerate)
+        record.frames_to_video_moviepy(args.input, args.output, args.framerate)
     elif args.kind == 'ffmpeg':
-        funcs.frames_to_video_ffmpeg(args.input, args.output, args.framerate, args.vcodec, args.pix_fmt)
+        record.frames_to_video_ffmpeg(args.input, args.output, args.framerate, args.vcodec, args.pix_fmt)
     else:
         parser.print_help()
+
+
+def octopus(argv):
+    parser = ArgumentParser(prog='screenio dynamic')
+    parser.add_argument('-c', '--config', default='screenio.toml', help='config file')
+    parser.add_argument('-t', '--dt', type=float, default=60, help='delta time default=60')
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    octopus_main(args.config, args.dt)
 
 
 def main(argv=None):
