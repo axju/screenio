@@ -1,3 +1,5 @@
+import sys
+from argparse import ArgumentParser
 from logging import getLogger
 from time import sleep
 from threading import Thread, Event
@@ -40,7 +42,7 @@ def check_trigger(data):
     return check_processes(data)
 
 
-def main(config_file='screenio.toml', dt=10):
+def octopus(config_file='screenio.toml', dt=10):
     worker = {}
     config = toml.load(config_file)
     logger.debug('config_file="%s", config=%s, worker=%s', config_file, config, worker)
@@ -66,6 +68,14 @@ def main(config_file='screenio.toml', dt=10):
 
     for thread in worker.values():
         thread.stop()
+
+
+def main(argv=None):
+    parser = ArgumentParser(prog='screenio dynamic')
+    parser.add_argument('-c', '--config', default='screenio.toml', help='config file')
+    parser.add_argument('-t', '--dt', type=float, default=60, help='delta time default=60')
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    octopus(args.config, args.dt)
 
 
 if __name__ == '__main__':

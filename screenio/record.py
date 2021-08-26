@@ -1,29 +1,20 @@
+import sys
+from argparse import ArgumentParser
 from time import sleep
 from pathlib import Path
 from logging import getLogger
 
+import cv2
+import numpy as np
+import ffmpeg
+from PIL.ImageGrab import grab
+
+from .utils import create_parsers_pil, create_parsers_ffmpeg, format_now
 
 logger = getLogger(__name__)
-try:
-    import cv2
-    import numpy as np
-except ImportError:
-    logger.info('missing module cv2')
-try:
-    import ffmpeg
-except ImportError:
-    logger.info('missing module ffmpeg')
-try:
-    from PIL.ImageGrab import grab
-except ImportError:
-    logger.info('missing module pillow')
-try:
-    from moviepy.editor import ImageSequenceClip
-except ImportError:
-    logger.info('missing module moviepy')
 
 
-def record_video_pil(output='out.mp4', size=None, dt=1, framerate=30, difference=True, xdisplay=':1', running=None):
+def record_video_pil(output='out.mp4', size=None, dt=1, framerate=30, difference=True, xdisplay=None, running=None):
     current_img = last_img = grab(size, xdisplay=xdisplay)
     output = Path(output).resolve()
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -116,18 +107,32 @@ def record_frames_ffmpeg(output='frames', size=(1920, 1080), framerate=1, filena
         logger.info('end ffmpeg recording with counter=%i', counter)
 
 
-def frames_to_video_moviepy(directory='frames', output='out.mp4', fps=30):
-    directory = Path(directory).resolve()
-    logger.debug('directory=%s', directory)
-    files = [str(file) for file in directory.iterdir()]
-    files.sort()
-    clip = ImageSequenceClip(files, fps=fps)
-    clip.write_videofile(str(output))
+def main(argv=None):
+    parser = ArgumentParser(prog='screenio video')
+    subparsers = parser.add_subparsers(dest='kind')
+    subparsers_pil = create_parsers_pil(subparsers)
+    subparsers_pil.add_argument('-o', '--output', default=format_now('{}.mp4'), help='output file')
+    subparsers_ffmpeg = create_parsers_ffmpeg(subparsers)
+    subparsers_ffmpeg.add_argument('-o', '--output', default=format_now('{}.mp4'), help='output file')
+
+    subparsers_pil = create_parsers_pil(subparsers, 'pil-frames')
+    subparsers_pil.add_argument('-o', '--output', default=format_now('./frames/{}', '%Y-%m-%d'), help='output dir')
+    subparsers_ffmpeg = create_parsers_ffmpeg(subparsers, 'ffmpeg-frames', ['in'])
+    subparsers_ffmpeg.add_argument('-o', '--output', default=format_now('./frames/{}', '%Y-%m-%d'), help='output dir')
 
 
-def frames_to_video_ffmpeg(directory='frames', output='out.mp4', fps=30, vcodec='libx264', pix_fmt='yuv420p'):
-    directory = Path(directory).resolve()
-    filename = str(directory / '%06d.png')
-    stream = ffmpeg.input(filename=filename, f='image2').setpts('N/TB/{}'.format(fps))
-    stream = ffmpeg.output(stream, output, vcodec=vcodec, pix_fmt=pix_fmt, r=fps)
-    ffmpeg.run(stream, overwrite_output=True)
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    if args.kind == 'pil':
+        record_video_pil(args.output, args.size, args.dt, args.framerate, args.difference)
+    elif args.kind == 'ffmpeg':
+        record_video_ffmpeg(args.output, args.filename, args.f, args.size, 1 / args.dt, args.framerate, args.vcodec, args.pix_fmt)
+    elif args.kind == 'pil-frames':
+        record_frames_pil(args.output, args.size, args.dt, args.difference)
+    elif args.kind == 'ffmpeg-frames':
+        record_frames_ffmpeg(args.output, args.size, 1 / args.dt, args.filename, args.f)
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()

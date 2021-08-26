@@ -13,6 +13,7 @@ setup(
     install_requires=[
         'importlib-metadata; python_version < "3.8.0"',
         'toml',
+        'psutil',
         'pillow',
         'moviepy',
         'ffmpeg-python',
@@ -20,13 +21,12 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'screenio=screenio.cli:main',
+            'screenio=screenio.__main__:main',
         ],
         'screenio.register_cmd': [
-            'video=screenio.cli:video',
-            'frames=screenio.cli:frames',
-            'convert=screenio.cli:convert',
-            'octopus=screenio.cli:octopus',
+            'record=screenio.record:main',
+            'convert=screenio.convert:main',
+            'octopus=screenio.octopus:main',
         ],
     }
 )
