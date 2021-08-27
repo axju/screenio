@@ -1,8 +1,13 @@
 import logging
 from importlib import import_module
 from importlib.metadata import entry_points
+from pathlib import Path
 from datetime import datetime
+from time import sleep
+from threading import Thread, Event
+
 import psutil
+from watchdog.events import PatternMatchingEventHandler
 
 
 logger = logging.getLogger(__name__)
@@ -74,16 +79,105 @@ def format_now(format_str='{}.mp4', format_datetime='%Y-%m-%d_%H-%M-%S'):
     return format_str.format(datetime.now().strftime(format_datetime))
 
 
-def check_processes(data):
-    if not isinstance(data, dict):
-        data = {}
-    required_processes = list(data.get('required_processes', []))
-    prozesse = {p.name() for p in psutil.process_iter() if p.name() in required_processes}
-    if len(prozesse) != len(required_processes):
-        return False
+def check_processes(required=[], required_files=[], banned=[], banned_files=[]):
+    if not required and not required_files and not required_files and not banned_files:
+        return True
 
-    banned_processes = list(data.get('banned_processes', []))
-    if len([p.name() for p in psutil.process_iter() if p.name() in banned_processes]) > 0:
-        return False
+    processes, processes_files = [], []
+    for proc in psutil.process_iter():
+        if proc.name() in required:
+            processes.append(proc.name())
+        if proc.name() in banned:
+            return False
+        try:
+            for item in proc.open_files():
+                for name in required_files:
+                    if item.path.startswith(name):
+                        processes_files.append(name)
+                for name in banned_files:
+                    if item.path.startswith(name):
+                        return False
+        except Exception:
+            pass
+    return len(set(processes)) == len(required) and len(set(processes_files)) == len(required_files)
 
-    return True
+
+def check_triggers(current, target):
+    if target:
+        return all([tag in current for tag in target])
+    return len(current) > 0
+
+
+def check_open_file(fpath):
+    path = str(fpath)
+    for proc in psutil.process_iter():
+        try:
+            for item in proc.open_files():
+                if path == item.path:
+                    return True
+        except Exception:
+            pass
+    return False
+
+
+class FileSystemHandler(PatternMatchingEventHandler):
+
+    def __init__(self, name, on_action, patterns=['*.py']):
+        super().__init__(patterns=patterns, ignore_directories=True, case_sensitive=False)
+        self.name, self.on_action = name, on_action
+
+    def on_any_event(self, event):
+        self.on_action(self.name, event)
+
+
+class BasicTrigger(Thread):
+    """docstring for MouseKeyboardTrigger."""
+
+    def __init__(self, config, on_trigger, dt=5):
+        super().__init__()
+        self.logger = logging.getLogger('.'.join([__name__, self.__class__.__name__]))
+        self.config, self.on_trigger, self.dt = config, on_trigger, dt
+        self._actions, self.running = [], Event()
+        self.start()
+
+    def wait(self):
+        for _ in range(self.dt):
+            sleep(1)
+
+    def close(self):
+        self.logger.debug('stop thread')
+        self.running.set()
+
+    def action(self, name, event):
+        if event and name not in self._actions:
+            self.on_trigger(self.__class__.__name__, name, True)
+            self._actions.append(name)
+        elif not event and name in self._actions:
+            self.on_trigger(self.__class__.__name__, name, False)
+            self._actions.remove(name)
+
+
+class FuncRunner(Thread):
+
+    def __init__(self, func='screenio.record.record_video_pil', directory='.', filename='{}.mp4', kwargs={}):
+        super().__init__()
+        self.running = Event()
+        if isinstance(func, str):
+            self.func = load_func(func)
+        else:
+            self.func = func
+
+        directory = Path(directory).resolve()
+        directory.mkdir(parents=True, exist_ok=True)
+
+        self.kwargs = kwargs
+        self.kwargs['output'] = str(Path(directory).resolve() / format_now(filename))
+        self.start()
+
+    def stop(self):
+        logger.debug('stop thread')
+        self.running.set()
+
+    def run(self):
+        logger.debug('run thread')
+        self.func(**self.kwargs, running=self.running)

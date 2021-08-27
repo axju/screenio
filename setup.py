@@ -14,6 +14,8 @@ setup(
         'importlib-metadata; python_version < "3.8.0"',
         'toml',
         'psutil',
+        'pynput',
+        'watchdog',
         'pillow',
         'moviepy',
         'ffmpeg-python',

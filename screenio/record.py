@@ -113,13 +113,12 @@ def main(argv=None):
     subparsers_pil = create_parsers_pil(subparsers)
     subparsers_pil.add_argument('-o', '--output', default=format_now('{}.mp4'), help='output file')
     subparsers_ffmpeg = create_parsers_ffmpeg(subparsers)
-    subparsers_ffmpeg.add_argument('-o', '--output', default=format_now('{}.mp4'), help='output file')
+    subparsers_ffmpeg.add_argument('-o', '--output', default=format_now('{}.mkv'), help='output file')
 
     subparsers_pil = create_parsers_pil(subparsers, 'pil-frames')
     subparsers_pil.add_argument('-o', '--output', default=format_now('./frames/{}', '%Y-%m-%d'), help='output dir')
     subparsers_ffmpeg = create_parsers_ffmpeg(subparsers, 'ffmpeg-frames', ['in'])
     subparsers_ffmpeg.add_argument('-o', '--output', default=format_now('./frames/{}', '%Y-%m-%d'), help='output dir')
-
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     if args.kind == 'pil':

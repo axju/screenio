@@ -2,80 +2,79 @@ import sys
 from argparse import ArgumentParser
 from logging import getLogger
 from time import sleep
-from threading import Thread, Event
-from pathlib import Path
 
 import toml
 
-from .utils import check_processes, load_func, format_now
+from .utils import FuncRunner, check_triggers
+from .triggers import ProcessesTrigger, FileSystemTrigger, MouseKeyboardTrigger
 
 logger = getLogger(__name__)
 
 
-class FuncRunner(Thread):
+class Octopus:
+    """docstring for Octopus."""
+    trigger_cls = [
+        MouseKeyboardTrigger,
+        ProcessesTrigger,
+        FileSystemTrigger,
+    ]
 
-    def __init__(self, func='screenio.record.record_video_pil', directory='.', filename='{}.mp4', kwargs={}):
-        super().__init__()
-        self.running = Event()
-        if isinstance(func, str):
-            self.func = load_func(func)
-        else:
-            self.func = func
+    def __init__(self, config='screenio.toml', dt=60):
+        super(Octopus, self).__init__()
+        self.config = toml.load(config)
+        default = self.config.pop('default', {})
+        for data in self.config.values():
+            for key, value in default.items():
+                data.setdefault(key, value)
+        for key, value in self.config.items():
+            logger.debug('name=%s data=%s', key, value)
+        self.dt, self.worker, self.trigger = dt, {}, {}
+        self.triggers = [cls(self.config, self.on_trigger) for cls in self.trigger_cls]
 
-        directory = Path(directory).resolve()
-        directory.mkdir(parents=True, exist_ok=True)
+    def on_trigger(self, sender, name, event):
+        trigger = self.trigger.get(name, [])
+        if event and sender not in trigger:
+            trigger.append(sender)
+            if check_triggers(trigger, self.config[name].get('triggers', [])) and name not in self.worker:
+                self.worker[name] = FuncRunner(
+                    self.config[name].get('func'),
+                    self.config[name].get('directory', '.'),
+                    self.config[name].get('filename', '{}.mp4'),
+                    self.config[name].get('kwargs', {})
+                )
+        elif not event and sender in trigger:
+            trigger.remove(sender)
+            if not check_triggers(trigger, self.config[name].get('triggers', [])) and name in self.worker:
+                thread = self.worker.pop(name)
+                thread.stop()
 
-        self.kwargs = kwargs
-        self.kwargs['output'] = str(Path(directory).resolve() / format_now(filename))
-        self.start()
+        self.trigger[name] = trigger
 
-    def stop(self):
-        logger.debug('stop thread')
-        self.running.set()
+    def on_trigger_mouse(self, name, event):
+        self.on_trigger('mouse', name, event)
 
-    def run(self):
-        logger.debug('run thread')
-        self.func(**self.kwargs, running=self.running)
-
-
-def check_trigger(data):
-    return check_processes(data)
-
-
-def octopus(config_file='screenio.toml', dt=10):
-    worker = {}
-    config = toml.load(config_file)
-    logger.debug('config_file="%s", config=%s, worker=%s', config_file, config, worker)
-    while True:
-        try:
-            for key, data in config.items():
-                if check_trigger(data):
-                    if key not in worker:
-                        worker[key] = FuncRunner(
-                            data.get('func'),
-                            data.get('directory', '.'),
-                            data.get('filename', '{}.mp4'),
-                            data.get('kwargs', {})
-                        )
-                elif key in worker:
-                    thread = worker.pop(key)
-                    thread.stop()
-                    logger.debug('worker=%s', worker)
-            for _ in range(dt):
-                sleep(1)
-        except KeyboardInterrupt:
-            break
-
-    for thread in worker.values():
-        thread.stop()
+    def wait(self):
+        while True:
+            try:
+                logger.debug('current trigger %s', self.trigger)
+                for _ in range(self.dt):
+                    sleep(1)
+            except KeyboardInterrupt:
+                break
+        for trigger in self.triggers:
+            trigger.close()
+        for thread in self.worker.values():
+            thread.stop()
+            thread.join()
 
 
 def main(argv=None):
     parser = ArgumentParser(prog='screenio dynamic')
     parser.add_argument('-c', '--config', default='screenio.toml', help='config file')
-    parser.add_argument('-t', '--dt', type=float, default=60, help='delta time default=60')
+    parser.add_argument('-t', '--dt', type=int, default=60, help='delta time default=60')
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    octopus(args.config, args.dt)
+    octopus = Octopus(args.config, args.dt)
+    octopus.wait()
 
 
 if __name__ == '__main__':
