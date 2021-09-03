@@ -32,6 +32,7 @@ class Octopus:
         self.triggers = [cls(self.config, self.on_trigger) for cls in self.trigger_cls]
 
     def on_trigger(self, sender, name, event):
+        logger.info('on_trigger sender=%s, name=%s, event=%s', sender, name, event)
         trigger = self.trigger.get(name, [])
         if event and sender not in trigger:
             trigger.append(sender)

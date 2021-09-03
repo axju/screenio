@@ -82,23 +82,25 @@ def format_now(format_str='{}.mp4', format_datetime='%Y-%m-%d_%H-%M-%S'):
 def check_processes(required=[], required_files=[], banned=[], banned_files=[]):
     if not required and not required_files and not required_files and not banned_files:
         return True
-
     processes, processes_files = [], []
-    for proc in psutil.process_iter():
-        if proc.name() in required:
-            processes.append(proc.name())
-        if proc.name() in banned:
-            return False
-        try:
-            for item in proc.open_files():
-                for name in required_files:
-                    if item.path.startswith(name):
-                        processes_files.append(name)
-                for name in banned_files:
-                    if item.path.startswith(name):
-                        return False
-        except Exception:
-            pass
+    try:
+        for proc in psutil.process_iter():
+            if proc.name() in required:
+                processes.append(proc.name())
+            if proc.name() in banned:
+                return False
+            try:
+                for item in proc.open_files():
+                    for name in required_files:
+                        if item.path.startswith(name):
+                            processes_files.append(name)
+                    for name in banned_files:
+                        if item.path.startswith(name):
+                            return False
+            except Exception:
+                pass
+    except Exception:
+        return True
     return len(set(processes)) == len(required) and len(set(processes_files)) == len(required_files)
 
 
